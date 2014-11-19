@@ -12,7 +12,7 @@ int16_t* elevationForArea(FILE *file, float latitude, float longitude, unsigned 
 // square plot of land point cloud
 //   array size: width * height * 3 (x,y,z)
 //   X:longitude Y:latitude Z:elevation
-float* PointsForArea(FILE *file, float latitude, float longitude, unsigned int width, unsigned int height);
+float* elevationPointsForArea(FILE *file, float latitude, float longitude, unsigned int width, unsigned int height);
 
 // convert latitude longitude to a byte location in DEM file
 unsigned long getByteOffset(float latitude, float longitude);
