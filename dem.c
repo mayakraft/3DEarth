@@ -51,6 +51,7 @@ demMeta loadHeader(string directory, string filename){
         else if(i == 13) meta.ydim = d1;
         i++;
     } while (cmp > 0);
+    fclose(file);
     return meta;
 }
 
@@ -76,22 +77,22 @@ unsigned long getByteOffset(float latitude, float longitude, demMeta meta){
     return (byteX + byteY*meta.ncols) * 2;  // * 2, each index is 2 bytes wide
 }
 
-void startOffset(float latitude, float longitude, unsigned int *x, unsigned int *y){
+void convertLatLonToXY(demMeta meta, float latitude, float longitude, unsigned int *x, unsigned int *y){
     
-    double plateWidth = XDIM * NCOLS;  // in degrees, Longitude
-    double plateHeight = YDIM * NROWS; // in degrees, Latitude
+    double plateWidth = meta.xdim * meta.ncols;  // in degrees, Longitude
+    double plateHeight = meta.ydim * meta.nrows; // in degrees, Latitude
     
-    if(longitude < ULXMAP || longitude > ULXMAP+plateWidth || latitude > ULYMAP || latitude < ULYMAP-plateHeight){
+    if(longitude < meta.ulxmap || longitude > meta.ulxmap+plateWidth || latitude > meta.ulymap || latitude < meta.ulymap-plateHeight){
         printf("\nEXCEPTION: lat long exceeds plate boundary\n");
         return;
     }
-    double xOffset = (longitude-ULXMAP)/plateWidth;  // 0.0 - 1.0
-    double yOffset = (ULYMAP-latitude)/plateHeight;  // 0.0 - 1.0
+    double xOffset = (longitude-meta.ulxmap)/plateWidth;  // 0.0 - 1.0
+    double yOffset = (meta.ulymap-latitude)/plateHeight;  // 0.0 - 1.0
     
     printf("%f, %f\n",xOffset, yOffset);
     
-    *x = xOffset*NCOLS;
-    *y = yOffset*NROWS;
+    *x = xOffset*meta.ncols;
+    *y = yOffset*meta.nrows;
 }
 
 
@@ -133,37 +134,37 @@ void startOffset(float latitude, float longitude, unsigned int *x, unsigned int 
 
 // returns a cropped rectangle from a raw DEM file
 // includes edge overflow protection
+// rect defined by (x,y):top left corner and width, height
 int16_t* cropDEM(string directory, string filename, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
     //if rectangle overflows past boundary, will move the rectangle and maintain width and height if possible
     //if width or height is bigger than the file's, will shorten the width/height
     
-    return NULL;
-    
-    FILE *file = fopen("/Users/Robby/Code/DEM/w100n90/W100N90.DEM", "r");
-    
+    demMeta meta = loadHeader(directory, filename);
+    string path = directory + filename + ".DEM";
+    FILE *file = fopen(path.c_str(), "r");
     printf("%d :: %d\n",x, y);
-    if(x > NCOLS || y > NROWS){
+    if(x > meta.ncols || y > meta.nrows){
         printf("EXCEPTION: starting location lies outside data");
         return NULL;
     }
-    if(width > NCOLS){
-        width = NCOLS;
+    if(width > meta.ncols){
+        width = meta.ncols;
         x = 0;
     }
-    else if (x+width > NCOLS){
-        x -= NCOLS-width;
+    else if (x+width > meta.ncols){
+        x -= meta.ncols-width;
     }
-    if(height > NROWS){
-        height = NROWS;
+    if(height > meta.nrows){
+        height = meta.nrows;
         y = 0;
     }
-    else if(y+height > NROWS){
-        y -= NROWS-height;
+    else if(y+height > meta.nrows){
+        y -= meta.nrows-height;
     }
     int16_t *crop = (int16_t*)malloc(sizeof(int16_t)*width*height);
     
 //    unsigned long startByte = x*2 + y*NCOLS*2;
-    unsigned long startByte = x*2 + y*2*NCOLS;   // (*2) convert byte to uint16
+    unsigned long startByte = x*2 + y*2*meta.ncols;   // (*2) convert byte to uint16
     uint16_t elevation[width];
     int16_t swapped[width];
     fseek(file, startByte, SEEK_SET);
@@ -174,7 +175,7 @@ int16_t* cropDEM(string directory, string filename, unsigned int x, unsigned int
     
 //    fseek(file, startByte, SEEK_SET);  //method 2
     for(int h = 0; h < height; h++){
-        fseek(file, startByte+NCOLS*2*h, SEEK_SET);  // method 2 comment this out
+        fseek(file, startByte+meta.ncols*2*h, SEEK_SET);  // method 2 comment this out
         fread(elevation, sizeof(uint16_t), width, file);
         // convert from little endian
         for(int i = 0; i < width; i++){
@@ -188,7 +189,7 @@ int16_t* cropDEM(string directory, string filename, unsigned int x, unsigned int
 //            printf("%p  %zd  %d\n",swapped[i], swapped[i], swapped[i]);
 //        fseek(file, NCOLS*2, SEEK_CUR); // method 2
     }
-    
+    fclose(file);
     return crop;
 }
 
@@ -235,20 +236,17 @@ float* elevationPointsFromDEM(string directory, string filename, float latitude,
     if(!width || !height)
         return NULL;
     
+    // load meta data from header
     demMeta meta = loadHeader(directory, filename);
-    
-    cropDEM(<#string directory#>, <#string filename#>, <#unsigned int x#>, <#unsigned int y#>, <#unsigned int width#>, <#unsigned int height#>)
-    
-    unsigned long centerByte = getByteOffset(latitude, longitude, meta);
-    unsigned long startByte = centerByte - (width*.5 * 2) - (height*.5 * meta.ncols * 2);
+
+    // convert lat/lon into column/row for plate
     unsigned int row, column;
-    startOffset(latitude, longitude, &column, &row);
-    printf("%d : %d\n",row, column);
-    int16_t *data = cropFile(file, column, row, width, height);
-    if(data == NULL) return NULL;
-    
-    printf("%lu, %lu\n", centerByte, startByte);
-    
+    convertLatLonToXY(meta, latitude, longitude, &column, &row);
+    printf("Row: %d    Column: %d\n",row, column);
+
+    // crop DEM and load it into memory
+    int16_t *data = cropDEM(directory, filename, column-width*.5, row-height*.5, width, height);
+
     float *points = (float*)malloc(sizeof(float)*width*height * 3); // x, y, z
     
     for(int h = 0; h < height; h++){
@@ -267,34 +265,34 @@ float* elevationPointsFromDEM(string directory, string filename, float latitude,
 
 // point cloud
 //X:longitude Y:latitude Z:elevation
-float* elevationPointsForArea(FILE *file, float latitude, float longitude, unsigned int width, unsigned int height){
-    if(!width || !height)
-        return NULL;
-    
-    unsigned long centerByte = getByteOffset(latitude, longitude);
-    unsigned long startByte = centerByte - (width*.5 * 2) - (height*.5 * NCOLS * 2);
-    unsigned int row, column;
-    startOffset(latitude, longitude, &column, &row);
-    printf("%d : %d\n",row, column);
-    int16_t *data = cropFile(file, column, row, width, height);
-    if(data == NULL) return NULL;
-    
-    printf("%lu, %lu\n", centerByte, startByte);
-    
-    float *points = (float*)malloc(sizeof(float)*width*height * 3); // x, y, z
-    
-    for(int h = 0; h < height; h++){
-        for(int w = 0; w < width; w++){
-            points[(h*width+w)*3+0] = (w - width*.5);         // x
-            points[(h*width+w)*3+1] = (h - height*.5);        // y
-            int16_t elev = data[h*width+w];
-            if(elev == -9999)
-                points[(h*width+w)*3+2] = 0.0f;///1000.0;    // z, convert meters to km
-            else
-                points[(h*width+w)*3+2] = data[h*width+w];///1000.0;    // z, convert meters to km
-        }
-    }
-    return points;
-}
+//float* elevationPointsForArea(FILE *file, float latitude, float longitude, unsigned int width, unsigned int height){
+//    if(!width || !height)
+//        return NULL;
+//    
+//    unsigned long centerByte = getByteOffset(latitude, longitude);
+//    unsigned long startByte = centerByte - (width*.5 * 2) - (height*.5 * NCOLS * 2);
+//    unsigned int row, column;
+//    startOffset(latitude, longitude, &column, &row);
+//    printf("%d : %d\n",row, column);
+//    int16_t *data = cropFile(file, column, row, width, height);
+//    if(data == NULL) return NULL;
+//    
+//    printf("%lu, %lu\n", centerByte, startByte);
+//    
+//    float *points = (float*)malloc(sizeof(float)*width*height * 3); // x, y, z
+//    
+//    for(int h = 0; h < height; h++){
+//        for(int w = 0; w < width; w++){
+//            points[(h*width+w)*3+0] = (w - width*.5);         // x
+//            points[(h*width+w)*3+1] = (h - height*.5);        // y
+//            int16_t elev = data[h*width+w];
+//            if(elev == -9999)
+//                points[(h*width+w)*3+2] = 0.0f;///1000.0;    // z, convert meters to km
+//            else
+//                points[(h*width+w)*3+2] = data[h*width+w];///1000.0;    // z, convert meters to km
+//        }
+//    }
+//    return points;
+//}
 
 
