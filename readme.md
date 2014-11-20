@@ -4,13 +4,23 @@ OpenGL mesh rectangles of Earth surface from anywhere in the world using the USG
 
 ![tiles image](https://lta.cr.usgs.gov/sites/default/files/tiles.gif)
 
+#methods
+
+'elevationPointCloud("/path/", "file", latitude, longitude, width, height)'
+
+* lat/lon mark the center of the plate
+* width and height are in km
+
 #usage
 
 download tiles for offline, local use: [ftp://edcftp.cr.usgs.gov/data/gtopo30]
 
-`FILE *file = fopen("/w100n90/W100N90.DEM", "r");`
+```
+pointCloud = elevationPointCloud("/path/", "W100N90", 40.7110871, -73.3074902, 100, 100);
 
-define rectangle by center of the rect (lon, lat), then total width (lon), height (lat)
+glVertexPointer(3, GL_FLOAT, 0, pointCloud);
+glDrawArrays(GL_POINTS, 0, 10000);
+```
 
 #scale
 

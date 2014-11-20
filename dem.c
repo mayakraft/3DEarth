@@ -1,5 +1,5 @@
 //
-//  DEM.c
+//  dem.c
 //  Created by Robby on 5/10/14.
 //
 
@@ -12,8 +12,6 @@
 //#define NCOLS 4800
 //#define XDIM 0.00833333333333
 //#define YDIM 0.00833333333333
-//#define ULXMAP -89.3333333
-//#define ULYMAP 90.0
 
 struct demMeta {
     unsigned int nrows;
@@ -26,10 +24,14 @@ struct demMeta {
 typedef struct demMeta demMeta;
 
 demMeta loadHeader(string directory, string filename){
-// coodinated to .HDR file standard (accompanies .DEM files)
+// expecting .HDR file standard (accompanies .DEM files)
     demMeta meta;
     string path = directory+filename+".HDR";
     FILE *file = fopen(path.c_str(), "r");
+    if(file == NULL){
+        printf("EXCEPTION: FILE (%s) DOESN'T EXIST",path.c_str());
+        return meta;
+    }
     char s1[20], s2[20];
     double d1;
     int i = 0;
@@ -99,6 +101,10 @@ int16_t* cropDEMWithMeta(string directory, string filename, demMeta meta, unsign
     string path = directory + filename + ".DEM";
     FILE *file = fopen(path.c_str(), "r");
     int16_t *crop = (int16_t*)malloc(sizeof(int16_t)*width*height);
+    if(file == NULL){
+        printf("EXCEPTION: FILE (%s) DOESN'T EXIST",path.c_str());
+        return crop;
+    }
     
     unsigned long startByte = x*2 + y*2*meta.ncols;   // (*2) convert byte to uint16
     uint16_t elevation[width];
@@ -110,7 +116,7 @@ int16_t* cropDEMWithMeta(string directory, string filename, demMeta meta, unsign
     for(int h = 0; h < height; h++){
         fseek(file, startByte+meta.ncols*2*h, SEEK_SET);  // method 2 comment this out
         fread(elevation, sizeof(uint16_t), width, file);
-        // convert from little endian
+        // swap bits: little endian to big
         for(int i = 0; i < width; i++){
             swapped[i] = (elevation[i]>>8) | (elevation[i]<<8);
             crop[h*width+i] = swapped[i];
@@ -157,6 +163,7 @@ void checkBoundaries(demMeta meta, unsigned int *x, unsigned int *y, unsigned in
     }
 }
 
+//X:longitude Y:latitude Z:elevation
 float* elevationPointCloud(string directory, string filename, float latitude, float longitude, unsigned int width, unsigned int height){
     if(!width || !height)
         return NULL;
@@ -172,7 +179,7 @@ float* elevationPointCloud(string directory, string filename, float latitude, fl
     column -= width*.5;
     row -= height*.5;
     checkBoundaries(meta, &column, &row, &width, &height);
-    printf("Columns:(%d to %d)\nRows:(%d to %d)\n",column, column+height, row, row+width);
+    printf("Columns:(%d to %d)\nRows:(%d to %d)\n",column, column+width, row, row+height);
 
     // crop DEM and load it into memory
     int16_t *data = cropDEMWithMeta(directory, filename, meta, column, row, width, height);
@@ -193,37 +200,4 @@ float* elevationPointCloud(string directory, string filename, float latitude, fl
     }
     return points;
 }
-
-// point cloud
-//X:longitude Y:latitude Z:elevation
-//float* elevationPointsForArea(FILE *file, float latitude, float longitude, unsigned int width, unsigned int height){
-//    if(!width || !height)
-//        return NULL;
-//    
-//    unsigned long centerByte = getByteOffset(latitude, longitude);
-//    unsigned long startByte = centerByte - (width*.5 * 2) - (height*.5 * NCOLS * 2);
-//    unsigned int row, column;
-//    startOffset(latitude, longitude, &column, &row);
-//    printf("%d : %d\n",row, column);
-//    int16_t *data = cropFile(file, column, row, width, height);
-//    if(data == NULL) return NULL;
-//    
-//    printf("%lu, %lu\n", centerByte, startByte);
-//    
-//    float *points = (float*)malloc(sizeof(float)*width*height * 3); // x, y, z
-//    
-//    for(int h = 0; h < height; h++){
-//        for(int w = 0; w < width; w++){
-//            points[(h*width+w)*3+0] = (w - width*.5);         // x
-//            points[(h*width+w)*3+1] = (h - height*.5);        // y
-//            int16_t elev = data[h*width+w];
-//            if(elev == -9999)
-//                points[(h*width+w)*3+2] = 0.0f;///1000.0;    // z, convert meters to km
-//            else
-//                points[(h*width+w)*3+2] = data[h*width+w];///1000.0;    // z, convert meters to km
-//        }
-//    }
-//    return points;
-//}
-
 
