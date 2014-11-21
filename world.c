@@ -21,7 +21,7 @@ void display(){
 }
 
 void spinDisplay(void){
-	spin = spin + 2.0;
+	spin = spin - 2.0;
 	if(spin > 360.0){
 		spin = spin - 360.0;
 	}
