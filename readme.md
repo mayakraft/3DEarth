@@ -6,14 +6,14 @@ OpenGL mesh rectangles of Earth surface from anywhere in the world using the USG
 
 #methods
 
-'elevationPointCloud("/path/", "file", latitude, longitude, width, height)'
+`elevationPointCloud("/path/", "file", latitude, longitude, width, height)`
 
 * lat/lon mark the center of the plate
 * width and height are in km
 
 #usage
 
-download tiles for offline, local use: [ftp://edcftp.cr.usgs.gov/data/gtopo30]
+download tiles for offline use: [ftp://edcftp.cr.usgs.gov/data/gtopo30]
 
 ```
 pointCloud = elevationPointCloud("/path/", "W100N90", 40.7110871, -73.3074902, 100, 100);

@@ -23,20 +23,29 @@ struct demMeta {
 };
 typedef struct demMeta demMeta;
 
-demMeta loadHeader(string directory, string filename){
+demMeta loadHeader(char *directory, char *filename){
 // expecting .HDR file standard (accompanies .DEM files)
     demMeta meta;
-    string path = directory+filename+".HDR";
-    FILE *file = fopen(path.c_str(), "r");
+    
+    char path[128];  // oh shit you have a directory path larger than 128 chars? i have failed you..
+    path[0] = '\0';
+    printf("%s\n",path);
+    strcat(path, directory);
+    printf("%s\n",path);
+    strcat(path, filename);
+    printf("%s\n",path);
+    strcat(path, ".HDR");
+    printf("%s\n",path);
+    FILE *file = fopen(path, "r");
     if(file == NULL){
-        printf("EXCEPTION: FILE (%s) DOESN'T EXIST",path.c_str());
+        printf("\nEXCEPTION: FILE (%s) DOESN'T EXIST\n",path);
         return meta;
     }
     char s1[20], s2[20];
     double d1;
     int i = 0;
     int cmp;
-    printf("\nLoading %s\n(%s)\n╔════════════════════════════════\n", filename.c_str(), directory.c_str());
+    printf("\nLoading %s\n(%s)\n╔════════════════════════════════\n", filename, directory);
     do {
         cmp = fscanf(file,"%s %lf", s1, &d1);
         if(cmp == 1){
@@ -56,6 +65,8 @@ demMeta loadHeader(string directory, string filename){
     } while (cmp > 0);
     printf("╚════════════════════════════════\n");
     fclose(file);
+//    free(path);
+    // error on free(), leaking memory in the meantime.
     return meta;
 }
 
@@ -96,13 +107,17 @@ void convertLatLonToXY(demMeta meta, float latitude, float longitude, unsigned i
 // returns a cropped rectangle from a raw DEM file
 // includes edge overflow protection
 // rect defined by (x,y):top left corner and width, height
-int16_t* cropDEMWithMeta(string directory, string filename, demMeta meta, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
+int16_t* cropDEMWithMeta(char *directory, char *filename, demMeta meta, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
     
-    string path = directory + filename + ".DEM";
-    FILE *file = fopen(path.c_str(), "r");
+    char path[128];  // oh shit you have a directory path larger than 128 chars? i have failed you..
+    path[0] = '\0';
+    strcat(path, directory);
+    strcat(path, filename);
+    strcat(path, ".DEM");
+    FILE *file = fopen(path, "r");
     int16_t *crop = (int16_t*)malloc(sizeof(int16_t)*width*height);
     if(file == NULL){
-        printf("EXCEPTION: FILE (%s) DOESN'T EXIST",path.c_str());
+        printf("EXCEPTION: FILE (%s) DOESN'T EXIST",path);
         return crop;
     }
     
@@ -131,7 +146,7 @@ int16_t* cropDEMWithMeta(string directory, string filename, demMeta meta, unsign
     fclose(file);
     return crop;
 }
-int16_t* cropDEM(string directory, string filename, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
+int16_t* cropDEM(char *directory, char *filename, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
     demMeta meta = loadHeader(directory, filename);
     return cropDEMWithMeta(directory, filename, meta, x, y, width, height);
 }
@@ -164,13 +179,13 @@ void checkBoundaries(demMeta meta, unsigned int *x, unsigned int *y, unsigned in
 }
 
 //X:longitude Y:latitude Z:elevation
-float* elevationPointCloud(string directory, string filename, float latitude, float longitude, unsigned int width, unsigned int height){
+float* elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height){
     if(!width || !height)
         return NULL;
     
     // load meta data from header
     demMeta meta = loadHeader(directory, filename);
-
+    
     // convert lat/lon into column/row for plate
     unsigned int row, column;
     convertLatLonToXY(meta, latitude, longitude, &column, &row);
@@ -198,6 +213,78 @@ float* elevationPointCloud(string directory, string filename, float latitude, fl
                 points[(h*width+w)*3+2] = data[h*width+w];///1000.0;    // z, convert meters to km
         }
     }
+    return points;
+}
+
+//X:longitude Y:latitude Z:elevation
+float* elevationTriangleStrip(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height){
+    if(!width || !height)
+        return NULL;
+    
+    // load meta data from header
+    demMeta meta = loadHeader(directory, filename);
+    
+    // convert lat/lon into column/row for plate
+    unsigned int row, column;
+    convertLatLonToXY(meta, latitude, longitude, &column, &row);
+    
+    // shift center point to top left, and check boundaries
+    column -= width*.5;
+    row -= height*.5;
+    checkBoundaries(meta, &column, &row, &width, &height);
+    printf("Columns:(%d to %d)\nRows:(%d to %d)\n",column, column+width, row, row+height);
+    
+    // crop DEM and load it into memory
+    int16_t *data = cropDEMWithMeta(directory, filename, meta, column, row, width, height);
+    
+    // empty point cloud, (x, y, z)
+    unsigned int count = (width)*2*(height-1) * 3;
+    float *points = (float*)malloc(sizeof(float) * count * 2); // times 2, to make room for normals
+    int16_t elev;
+    for(int h = 0; h < height-1; h++){
+        for(int q = 0; q < width; q++){
+            int w;
+            if(h%2 == 0) w = q;
+            else         w = width-1-q;
+            points[(h*width+w)*6+0] = (w - width*.5);
+            points[(h*width+w)*6+1] = (h - height*.5);
+            elev = data[h*width+w];
+            if(elev == -9999)
+                points[(h*width+w)*6+2] = 0.0f;
+            else
+                points[(h*width+w)*6+2] = data[h*width+w];
+
+            points[(h*width+w)*6+3] = (w - width*.5);
+            points[(h*width+w)*6+4] = ((h+1) - height*.5);
+            elev = data[(h+1)*width+w];
+            if(elev == -9999)
+                points[(h*width+w)*6+5] = 0.0f;
+            else
+                points[(h*width+w)*6+5] = data[(h+1)*width+w];
+        }
+    }
+    // calculate normals
+    for(int i = 1; i < ((height-1)*width*2 - 1); i++){
+        float Ux = points[i*3+0] - points[(i-1)*3+0];
+        float Uy = points[i*3+1] - points[(i-1)*3+1];
+        float Uz = points[i*3+2] - points[(i-1)*3+2];
+        
+        float Vx = points[(i+1)*3+0] - points[(i-1)*3+0];
+        float Vy = points[(i+1)*3+1] - points[(i-1)*3+1];
+        float Vz = points[(i+1)*3+2] - points[(i-1)*3+2];
+        
+        float Nx = Uy*Vz - Uz*Vy;
+        float Ny = Uz*Vx - Ux*Vz;
+        float Nz = Ux*Vy - Uy*Vx;
+
+        points[count+i*3+0] = Nx;
+        points[count+i*3+1] = Ny;
+        points[count+i*3+2] = Nz;
+    }
+//        So for a triangle p1, p2, p3, if the vector U = p2 - p1 and the vector V = p3 - p1 then the normal N = U X V and can be calculated by:
+//            Nx = UyVz - UzVy
+//            Ny = UzVx - UxVz
+//            Nz = UxVy - UyVx
     return points;
 }
 
