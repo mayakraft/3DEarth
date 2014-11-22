@@ -35,12 +35,15 @@ void display(){
 	// 	glColor3f(1.0, 1.0, 1.0);
 	// 	glRectf(-25.0, -25.0, 25.0, 25.0);
 	// glPopMatrix();
+		
 	glPushMatrix();
-		glRotatef(spin, 0.0f, 0.0f, 1.0f);
-		glTranslatef(0, -1, 0);
-		glRotatef(90, -1, 0, 0);
-		glRotatef(90, -1, 0, 0);
-		glScalef(.1, .2, -.1);
+
+		glTranslatef(0, 0, -50);
+		glScalef(.1, .1, -.1);
+		glRotatef(120+cos(spin*.0015)*30, -1, 0, 0);
+		glPushMatrix();
+		glRotatef(sin(spin*.004)*90, 0.0f, 0.0f, 1.0f);
+		glScalef(1.0f, 1.0f, .10f);
 		glEnableClientState(GL_COLOR_ARRAY);
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glColorPointer(3, GL_FLOAT, 0, _colors);
@@ -49,7 +52,7 @@ void display(){
 		glDisableClientState(GL_VERTEX_ARRAY);
 		glDisableClientState(GL_COLOR_ARRAY);
 	glPopMatrix();
-
+	glPopMatrix();
 	glutSwapBuffers();
 	// glFlush();
 }
@@ -66,7 +69,8 @@ void reshape(int w, int h){
 	glViewport(0,0,(GLsizei) w, (GLsizei) h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(-40.0, 40.0, -40.0, 40.0, -100.0, 100.0);
+	// glOrtho(-40.0, 40.0, -40.0, 40.0, -100.0, 100.0);
+	glFrustum (-1.0, 1.0, -1.0, 1.0, 1.5, 200.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 }
