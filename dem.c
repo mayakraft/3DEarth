@@ -179,9 +179,9 @@ void checkBoundaries(demMeta meta, unsigned int *x, unsigned int *y, unsigned in
 }
 
 //X:longitude Y:latitude Z:elevation
-float* elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height){
+void elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float **points, float **colors){
     if(!width || !height)
-        return NULL;
+        return;
     
     // load meta data from header
     demMeta meta = loadHeader(directory, filename);
@@ -200,26 +200,42 @@ float* elevationPointCloud(char *directory, char *filename, float latitude, floa
     int16_t *data = cropDEMWithMeta(directory, filename, meta, column, row, width, height);
     
     // empty point cloud, (x, y, z)
-    float *points = (float*)malloc(sizeof(float)*width*height * 3);
+    (*points) = (float*)malloc(sizeof(float) * width*height * 3);
     
     for(int h = 0; h < height; h++){
         for(int w = 0; w < width; w++){
-            points[(h*width+w)*3+0] = (w - width*.5);         // x
-            points[(h*width+w)*3+1] = (h - height*.5);        // y
+            (*points)[(h*width+w)*3+0] = (w - width*.5);         // x
+            (*points)[(h*width+w)*3+1] = (h - height*.5);        // y
             int16_t elev = data[h*width+w];
             if(elev == -9999)
-                points[(h*width+w)*3+2] = 0.0f;///1000.0;    // z, convert meters to km
+                (*points)[(h*width+w)*3+2] = 0.0f;///1000.0;    // z, convert meters to km
             else
-                points[(h*width+w)*3+2] = data[h*width+w];///1000.0;    // z, convert meters to km
+                (*points)[(h*width+w)*3+2] = data[h*width+w];///1000.0;    // z, convert meters to km
         }
     }
-    return points;
+    
+    (*colors) = (float*)malloc(sizeof(float) * width*height * 3);
+    
+    for(int i = 0; i < width*height; i++){
+        if(data[i] == -9999){
+            (*colors)[i*3+0] = 0.0f;
+            (*colors)[i*3+1] = 0.0f;
+            (*colors)[i*3+2] = 1.0f;
+        }
+        else{
+            float orange = (100-data[i]) / 100.0;
+            if(orange < 0.0f) orange = 0.0f;
+            (*colors)[i*3+0] = orange;
+            (*colors)[i*3+1] = 0.6f;
+            (*colors)[i*3+2] = 0.0;
+        }
+    }
 }
 
 //X:longitude Y:latitude Z:elevation
-float* elevationTriangleStrip(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height){
+void elevationTriangleStrip(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float *points, float *colors){
     if(!width || !height)
-        return NULL;
+        return;
     
     // load meta data from header
     demMeta meta = loadHeader(directory, filename);
@@ -239,7 +255,7 @@ float* elevationTriangleStrip(char *directory, char *filename, float latitude, f
     
     // empty point cloud, (x, y, z)
     unsigned int count = (width)*2*(height-1) * 3;
-    float *points = (float*)malloc(sizeof(float) * count * 2); // times 2, to make room for normals
+    points = (float*)malloc(sizeof(float) * count);
     int16_t elev;
     for(int h = 0; h < height-1; h++){
         for(int q = 0; q < width; q++){
@@ -264,27 +280,27 @@ float* elevationTriangleStrip(char *directory, char *filename, float latitude, f
         }
     }
     // calculate normals
-    for(int i = 1; i < ((height-1)*width*2 - 1); i++){
-        float Ux = points[i*3+0] - points[(i-1)*3+0];
-        float Uy = points[i*3+1] - points[(i-1)*3+1];
-        float Uz = points[i*3+2] - points[(i-1)*3+2];
-        
-        float Vx = points[(i+1)*3+0] - points[(i-1)*3+0];
-        float Vy = points[(i+1)*3+1] - points[(i-1)*3+1];
-        float Vz = points[(i+1)*3+2] - points[(i-1)*3+2];
-        
-        float Nx = Uy*Vz - Uz*Vy;
-        float Ny = Uz*Vx - Ux*Vz;
-        float Nz = Ux*Vy - Uy*Vx;
-
-        points[count+i*3+0] = Nx;
-        points[count+i*3+1] = Ny;
-        points[count+i*3+2] = Nz;
-    }
+//    for(int i = 1; i < ((height-1)*width*2 - 1); i++){
+//        float Ux = points[i*3+0] - points[(i-1)*3+0];
+//        float Uy = points[i*3+1] - points[(i-1)*3+1];
+//        float Uz = points[i*3+2] - points[(i-1)*3+2];
+//        
+//        float Vx = points[(i+1)*3+0] - points[(i-1)*3+0];
+//        float Vy = points[(i+1)*3+1] - points[(i-1)*3+1];
+//        float Vz = points[(i+1)*3+2] - points[(i-1)*3+2];
+//        
+//        float Nx = Uy*Vz - Uz*Vy;
+//        float Ny = Uz*Vx - Ux*Vz;
+//        float Nz = Ux*Vy - Uy*Vx;
+//
+//        points[count+i*3+0] = Nx;
+//        points[count+i*3+1] = Ny;
+//        points[count+i*3+2] = Nz;
+//    }
 //        So for a triangle p1, p2, p3, if the vector U = p2 - p1 and the vector V = p3 - p1 then the normal N = U X V and can be calculated by:
 //            Nx = UyVz - UzVy
 //            Ny = UzVx - UxVz
 //            Nz = UxVy - UyVx
-    return points;
+
 }
 
