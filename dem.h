@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-typedef struct demMeta demMeta;
+// typedef struct demMeta demMeta;
 
 // all latitude and longitude inputs are for the center of the square
 // height and width equally spaced around it
@@ -12,7 +12,7 @@ typedef struct demMeta demMeta;
 // function will seek out .DEM file (data) and separate files for metadata
 float *elevationPoints(char *directory, char *file, double latitude, double longitude, unsigned int width, unsigned int height);
 
-demMeta loadHeader(char *directory, char *filename);
+struct demMeta loadHeader(char *directory, char *filename);
 
 // returns raw DEM data in a smaller cropped rectangle
 // includes edge overflow protection

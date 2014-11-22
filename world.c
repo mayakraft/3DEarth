@@ -9,22 +9,47 @@
 #endif
 
 #include <stdio.h>
-#include "dem.h"
+#include "dem.c"
 
 static GLfloat spin = 0.0f;
+static float *_data;
+static float *_colors;
+static _elevationDataSize;
+static int height = 400;
+static int width = 800;
 
 void init(){
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glShadeModel(GL_FLAT);
+	char directory[] = "/Users/Robby/Code/DEM/w100n90/";
+    char filename[] = "W100N90";
+    
+    elevationPointCloud(directory, filename, 41.3110871, -72.8074902, width, height, &_data, &_colors);
+    _elevationDataSize = width * height;
 }
 
 void display(){
 	glClear(GL_COLOR_BUFFER_BIT);
+	// glPushMatrix();
+	// glRotatef(spin, 0.0f, 0.0f, 1.0f);
+	// 	glColor3f(1.0, 1.0, 1.0);
+	// 	glRectf(-25.0, -25.0, 25.0, 25.0);
+	// glPopMatrix();
 	glPushMatrix();
 		glRotatef(spin, 0.0f, 0.0f, 1.0f);
-		glColor3f(1.0, 1.0, 1.0);
-		glRectf(-25.0, -25.0, 25.0, 25.0);
+		glTranslatef(0, -1, 0);
+		glRotatef(90, -1, 0, 0);
+		glRotatef(90, -1, 0, 0);
+		glScalef(.1, .2, -.1);
+		glEnableClientState(GL_COLOR_ARRAY);
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glColorPointer(3, GL_FLOAT, 0, _colors);
+		glVertexPointer(3, GL_FLOAT, 0, _data);
+		glDrawArrays(GL_POINTS, 0, _elevationDataSize);
+		glDisableClientState(GL_VERTEX_ARRAY);
+		glDisableClientState(GL_COLOR_ARRAY);
 	glPopMatrix();
+
 	glutSwapBuffers();
 	// glFlush();
 }
@@ -41,7 +66,7 @@ void reshape(int w, int h){
 	glViewport(0,0,(GLsizei) w, (GLsizei) h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(-40.0, 40.0, -40.0, 40.0, -1.0, 1.0);
+	glOrtho(-40.0, 40.0, -40.0, 40.0, -100.0, 100.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 }
@@ -66,7 +91,7 @@ int main(int argc, char **argv){
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowPosition(10,10);
-	glutInitWindowSize(480,480);
+	glutInitWindowSize(width,height);
 	glutCreateWindow(argv[0]);
 	init();
 	glutDisplayFunc(display);

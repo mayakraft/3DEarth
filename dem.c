@@ -4,14 +4,7 @@
 //
 
 #include <stdio.h>
-#include <string>
 #include "dem.h"
-
-// DEM standard for all plates except Antartica
-//#define NROWS 6000
-//#define NCOLS 4800
-//#define XDIM 0.00833333333333
-//#define YDIM 0.00833333333333
 
 struct demMeta {
     unsigned int nrows;
@@ -21,11 +14,18 @@ struct demMeta {
     double xdim;
     double ydim;
 };
-typedef struct demMeta demMeta;
 
-demMeta loadHeader(char *directory, char *filename){
+// DEM standard for all plates except Antartica
+//#define NROWS 6000
+//#define NCOLS 4800
+//#define XDIM 0.00833333333333
+//#define YDIM 0.00833333333333
+
+// typedef struct demMeta demMeta;
+
+struct demMeta loadHeader(char *directory, char *filename){
 // expecting .HDR file standard (accompanies .DEM files)
-    demMeta meta;
+    struct demMeta meta;
     
     char path[128];  // oh shit you have a directory path larger than 128 chars? i have failed you..
     path[0] = '\0';
@@ -70,7 +70,7 @@ demMeta loadHeader(char *directory, char *filename){
     return meta;
 }
 
-unsigned long getByteOffset(float latitude, float longitude, demMeta meta){
+unsigned long getByteOffset(float latitude, float longitude, struct demMeta meta){
     
     float plateWidth = meta.xdim * meta.ncols;  // in degrees, Longitude
     float plateHeight = meta.ydim * meta.nrows; // in degrees, Latitude
@@ -88,7 +88,7 @@ unsigned long getByteOffset(float latitude, float longitude, demMeta meta){
     return (byteX + byteY*meta.ncols) * 2;  // * 2, each index is 2 bytes wide
 }
 
-void convertLatLonToXY(demMeta meta, float latitude, float longitude, unsigned int *x, unsigned int *y){
+void convertLatLonToXY(struct demMeta meta, float latitude, float longitude, unsigned int *x, unsigned int *y){
     
     double plateWidth = meta.xdim * meta.ncols;  // in degrees, Longitude
     double plateHeight = meta.ydim * meta.nrows; // in degrees, Latitude
@@ -107,7 +107,7 @@ void convertLatLonToXY(demMeta meta, float latitude, float longitude, unsigned i
 // returns a cropped rectangle from a raw DEM file
 // includes edge overflow protection
 // rect defined by (x,y):top left corner and width, height
-int16_t* cropDEMWithMeta(char *directory, char *filename, demMeta meta, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
+int16_t* cropDEMWithMeta(char *directory, char *filename, struct demMeta meta, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
     
     char path[128];  // oh shit you have a directory path larger than 128 chars? i have failed you..
     path[0] = '\0';
@@ -147,11 +147,11 @@ int16_t* cropDEMWithMeta(char *directory, char *filename, demMeta meta, unsigned
     return crop;
 }
 int16_t* cropDEM(char *directory, char *filename, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
-    demMeta meta = loadHeader(directory, filename);
+    struct demMeta meta = loadHeader(directory, filename);
     return cropDEMWithMeta(directory, filename, meta, x, y, width, height);
 }
 
-void checkBoundaries(demMeta meta, unsigned int *x, unsigned int *y, unsigned int *width, unsigned int *height){
+void checkBoundaries(struct demMeta meta, unsigned int *x, unsigned int *y, unsigned int *width, unsigned int *height){
     //if rectangle overflows past boundary, will move the rectangle and maintain width and height if possible
     //if width or height is bigger than the file's, will shorten the width/height
     if(*x > meta.ncols || *y > meta.nrows){
@@ -184,7 +184,7 @@ void elevationPointCloud(char *directory, char *filename, float latitude, float 
         return;
     
     // load meta data from header
-    demMeta meta = loadHeader(directory, filename);
+    struct demMeta meta = loadHeader(directory, filename);
     
     // convert lat/lon into column/row for plate
     unsigned int row, column;
@@ -222,6 +222,13 @@ void elevationPointCloud(char *directory, char *filename, float latitude, float 
             (*colors)[i*3+1] = 0.0f;
             (*colors)[i*3+2] = 1.0f;
         }
+        else if(data[i] > 400){
+            float white = (data[i]-400) / 100.0;
+            if(white > 1.0f) white = 1.0f;
+            (*colors)[i*3+0] = white;
+            (*colors)[i*3+1] = 0.6f + 0.4f*white;
+            (*colors)[i*3+2] = white;
+        }
         else{
             float orange = (100-data[i]) / 100.0;
             if(orange < 0.0f) orange = 0.0f;
@@ -238,7 +245,7 @@ void elevationTriangleStrip(char *directory, char *filename, float latitude, flo
         return;
     
     // load meta data from header
-    demMeta meta = loadHeader(directory, filename);
+    struct demMeta meta = loadHeader(directory, filename);
     
     // convert lat/lon into column/row for plate
     unsigned int row, column;

@@ -6,22 +6,18 @@ OpenGL mesh rectangles of Earth surface from anywhere in the world using the USG
 
 #methods
 
-`elevationPointCloud("/path/", "file", latitude, longitude, width, height)`
+`void elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float** points, float** colors)`
 
 * lat/lon mark the center of the plate
 * width and height are in km
+* filename *without* extension: will read .DEM and .HDR (header)
 
-#usage
+`elevationPointCloud("~/Code/", "W100N90", 41.3110871, -72.8074902, 800, 400, &points, &colors);`
 
 download tiles for offline use: [ftp://edcftp.cr.usgs.gov/data/gtopo30]
-
-```
-pointCloud = elevationPointCloud("/path/", "W100N90", 40.7110871, -73.3074902, 100, 100);
-
-glVertexPointer(3, GL_FLOAT, 0, pointCloud);
-glDrawArrays(GL_POINTS, 0, 10000);
-```
 
 #scale
 
 1 world coordinate = 1 km
+
+![tiles image](https://raw.githubusercontent.com/robbykraft/3dEarth/master/sample/newengland.png)
