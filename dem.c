@@ -23,6 +23,39 @@ struct demMeta {
 
 // typedef struct demMeta demMeta;
 
+float* loadData(char *directory, char *filename, float **data){
+
+    (*data) = (float*)malloc(sizeof(float)*129 * 2);
+
+    char path[128];  // oh shit you have a directory path larger than 128 chars? i have failed you..
+    path[0] = '\0';
+    printf("%s\n",path);
+    strcat(path, directory);
+    printf("%s\n",path);
+    strcat(path, filename);
+    printf("%s\n",path);
+    FILE *file = fopen(path, "r");
+    if(file == NULL){
+        printf("\nEXCEPTION: FILE (%s) DOESN'T EXIST\n",path);
+        return NULL;
+    }
+    float f1, f2;
+    int i = 0;
+    int cmp;
+    printf("\nLoading %s\n(%s)\n╔════════════════════════════════\n", filename, directory);
+    do {
+        cmp = fscanf(file,"%f %f", &f1, &f2);
+        printf("║ %f, %f\n", f1, f2);
+        //44.0, -120.5
+        (*data)[i*2+0] = (f1 + 120.5) * 120;
+        (*data)[i*2+1] = -(f2 - 44.0) * 120;
+        i++;
+    } while (cmp > 0);
+    printf("╚════════════════════════════════\n");
+    fclose(file);
+    return data;
+}
+
 struct demMeta loadHeader(char *directory, char *filename){
 // expecting .HDR file standard (accompanies .DEM files)
     struct demMeta meta;
@@ -179,7 +212,7 @@ void checkBoundaries(struct demMeta meta, unsigned int *x, unsigned int *y, unsi
 }
 
 //X:longitude Y:latitude Z:elevation
-void elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float **points, float **colors){
+void elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float **points, float **colors, unsigned int *numPoints){
     if(!width || !height)
         return;
     
@@ -222,24 +255,110 @@ void elevationPointCloud(char *directory, char *filename, float latitude, float 
             (*colors)[i*3+1] = 0.0f;
             (*colors)[i*3+2] = 1.0f;
         }
-        else if(data[i] > 400){
-            float white = (data[i]-400) / 100.0;
+        // else if(data[i] > 400){
+        //     float white = (data[i]-400) / 100.0;
+        else if(data[i] > 1200){
+            float white = (data[i]-1200) / 500.0;
             if(white > 1.0f) white = 1.0f;
             (*colors)[i*3+0] = white;
             (*colors)[i*3+1] = 0.6f + 0.4f*white;
             (*colors)[i*3+2] = white;
         }
         else{
-            float orange = (100-data[i]) / 100.0;
+            float orange = (500-data[i]) / 500.0;
             if(orange < 0.0f) orange = 0.0f;
             (*colors)[i*3+0] = orange;
             (*colors)[i*3+1] = 0.6f;
             (*colors)[i*3+2] = 0.0;
         }
     }
+    *numPoints = height * width;
 }
 
 //X:longitude Y:latitude Z:elevation
+void elevationTriangles(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float **points, uint32_t **indices, float **colors, unsigned int *numPoints, unsigned int *numIndices){
+    if(!width || !height)
+        return;
+    
+    // load meta data from header
+    struct demMeta meta = loadHeader(directory, filename);
+    
+    // convert lat/lon into column/row for plate
+    unsigned int row, column;
+    convertLatLonToXY(meta, latitude, longitude, &column, &row);
+    
+    // shift center point to top left, and check boundaries
+    column -= width*.5;
+    row -= height*.5;
+    checkBoundaries(meta, &column, &row, &width, &height);
+    printf("Columns:(%d to %d)\nRows:(%d to %d)\n",column, column+width, row, row+height);
+
+    // crop DEM and load it into memory
+    int16_t *data = cropDEMWithMeta(directory, filename, meta, column, row, width, height);
+    
+    // empty point cloud, (x, y, z)
+    (*points) = (float*)malloc(sizeof(float) * width*height * 3);
+    
+    for(int h = 0; h < height; h++){
+        for(int w = 0; w < width; w++){
+            (*points)[(h*width+w)*3+0] = (w - width*.5);         // x
+            (*points)[(h*width+w)*3+1] = (h - height*.5);        // y
+            int16_t elev = data[h*width+w];
+            if(elev == -9999)
+                (*points)[(h*width+w)*3+2] = 0.0f;///1000.0;    // z, convert meters to km
+            else
+                (*points)[(h*width+w)*3+2] = data[h*width+w];///1000.0;    // z, convert meters to km
+        }
+    }
+
+    (*indices) = (uint32_t*)malloc(sizeof(uint32_t) * 2*(width-1)*(height-1) * 3);
+
+    // inside INDICES, (width-1) and (height-1) are max
+    // inside POINTS, width and height are max
+    for(int h = 0; h < height-1; h++){
+        for(int w = 0; w < width-1; w++){
+            (*indices)[(h*(width-1)+w)*6+0] = 1*(h*width+w);
+            (*indices)[(h*(width-1)+w)*6+1] = 1*((h+1)*width+w);
+            (*indices)[(h*(width-1)+w)*6+2] = 1*(h*width+w+1);
+            (*indices)[(h*(width-1)+w)*6+3] = 1*((h+1)*width+w);
+            (*indices)[(h*(width-1)+w)*6+4] = 1*((h+1)*width+w+1);
+            (*indices)[(h*(width-1)+w)*6+5] = 1*(h*width+w+1);
+        }
+    }
+
+    (*colors) = (float*)malloc(sizeof(float) * width*height * 3);
+    
+    for(int i = 0; i < width*height; i++){
+        if(data[i] == -9999){
+            (*colors)[i*3+0] = 0.0f;
+            (*colors)[i*3+1] = 0.0f;
+            (*colors)[i*3+2] = 1.0f;
+        }
+        else if(data[i] > 400){
+            float white = (data[i]-400) / 100.0;
+        // else if(data[i] > 1200){
+        //     float white = (data[i]-1200) / 500.0;
+            if(white > 1.0f) white = 1.0f;
+            (*colors)[i*3+0] = white;
+            (*colors)[i*3+1] = 0.6f + 0.4f*white;
+            (*colors)[i*3+2] = white;
+        }
+        else{
+            float orange = (500-data[i]) / 500.0;
+            if(orange < 0.0f) orange = 0.0f;
+            (*colors)[i*3+0] = orange;
+            (*colors)[i*3+1] = 0.6f;
+            (*colors)[i*3+2] = 0.0;
+        }
+    }
+
+    *numPoints = height * width;
+    *numIndices = 2*(width-1)*(height-1)*3;
+}
+
+
+//X:longitude Y:latitude Z:elevation
+// IN PROGRESS
 void elevationTriangleStrip(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float *points, float *colors){
     if(!width || !height)
         return;

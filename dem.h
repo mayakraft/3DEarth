@@ -22,7 +22,9 @@ int16_t* cropDEM(char *directory, char *filename, unsigned int x, unsigned int y
 // OpenGL data:
 //  - array size: width * height * 3 (x,y,z)
 //  - X:longitude Y:latitude Z:elevation
-void elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float** points, float** colors);
+void elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float** points, float** colors, unsigned int *numPoints);
+
+void elevationTriangles(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float **points, uint32_t **indices, float **colors, unsigned int *numPoints, unsigned int *numIndices);
 
 // convert latitude longitude to a byte location in DEM file
 //unsigned long getByteOffset(float latitude, float longitude);
