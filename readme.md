@@ -10,7 +10,9 @@ download tiles for offline use: [ftp://edcftp.cr.usgs.gov/data/gtopo30]
 
 ```c
  // mallocs GL_POINTS (x,y,z), stored in "points" with size of width*height
-void elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float** points, float** colors)
+void elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float** points, float** colors, unsigned int *numPoints);
+
+void elevationTriangles(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float **points, uint32_t **indices, float **colors, unsigned int *numPoints, unsigned int *numIndices);
 ```
 
 * lat/lon mark the center of the plate
@@ -18,7 +20,21 @@ void elevationPointCloud(char *directory, char *filename, float latitude, float 
 * filename *without* extension: will read .DEM and .HDR (header)
 
 ```c
-elevationPointCloud("~/Code/", "W100N90", 41.3110871, -72.8074902, 800, 400, &points, &colors);
+// points
+elevationPointCloud("~/Code/", "W100N90", 41.3110871, -72.8074902, 800, 400, &points, &colors, &numPoints);
+//with
+glVertexPointer(3, GL_FLOAT, 0, _points);
+glColorPointer(3, GL_FLOAT, 0, _colors);
+glDrawArrays(GL_POINTS, 0, _numPoints);
+```
+
+```c
+// filled triangles
+elevationTriangles("~/Code/", "W100N90", 41.3110871, -72.8074902, 800, 400, &points, &indices, &colors, &numPoints, &numIndices);
+//with
+glVertexPointer(3, GL_FLOAT, 0, _points);
+glColorPointer(3, GL_FLOAT, 0, _colors);
+glDrawElements(GL_TRIANGLES, _numIndices, GL_UNSIGNED_INT, _indices);
 ```
 
 #scale

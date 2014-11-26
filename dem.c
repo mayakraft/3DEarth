@@ -23,7 +23,7 @@ struct demMeta {
 
 // typedef struct demMeta demMeta;
 
-float* loadData(char *directory, char *filename, float **data){
+float** loadData(char *directory, char *filename, float **data){
 
     (*data) = (float*)malloc(sizeof(float)*129 * 2);
 
@@ -252,23 +252,32 @@ void elevationPointCloud(char *directory, char *filename, float latitude, float 
     for(int i = 0; i < width*height; i++){
         if(data[i] == -9999){
             (*colors)[i*3+0] = 0.0f;
-            (*colors)[i*3+1] = 0.0f;
-            (*colors)[i*3+2] = 1.0f;
+            (*colors)[i*3+1] = 0.24f;
+            (*colors)[i*3+2] = 0.666f;
         }
-        // else if(data[i] > 400){
-        //     float white = (data[i]-400) / 100.0;
-        else if(data[i] > 1200){
-            float white = (data[i]-1200) / 500.0;
+        else if(data[i] > 400){
+            float white = (data[i]-400) / 400.0;
+        // else if(data[i] > 1200){
+        //     float white = (data[i]-1200) / 500.0;
+        // else if(data[i] > 900){
+        //     float white = (data[i]-900) / 300.0;
             if(white > 1.0f) white = 1.0f;
             (*colors)[i*3+0] = white;
-            (*colors)[i*3+1] = 0.6f + 0.4f*white;
+            (*colors)[i*3+1] = 0.3f + 0.7f*white;
             (*colors)[i*3+2] = white;
         }
+        else if(data[i] > 100){
+            float dark = (data[i]-100) / 300.0;
+            if(dark > 1.0f) dark = 1.0f;
+            (*colors)[i*3+0] = 0.0f;
+            (*colors)[i*3+1] = 0.5f - 0.2f*dark;
+            (*colors)[i*3+2] = 0.0f;
+        }
         else{
-            float orange = (500-data[i]) / 500.0;
+            float orange = (100-data[i]) / 100.0;
             if(orange < 0.0f) orange = 0.0f;
-            (*colors)[i*3+0] = orange;
-            (*colors)[i*3+1] = 0.6f;
+            (*colors)[i*3+0] = orange * .85;
+            (*colors)[i*3+1] = 0.5f;
             (*colors)[i*3+2] = 0.0;
         }
     }
@@ -331,25 +340,32 @@ void elevationTriangles(char *directory, char *filename, float latitude, float l
     for(int i = 0; i < width*height; i++){
         if(data[i] == -9999){
             (*colors)[i*3+0] = 0.0f;
-            (*colors)[i*3+1] = 0.0f;
-            (*colors)[i*3+2] = 1.0f;
+            (*colors)[i*3+1] = 0.24f;
+            (*colors)[i*3+2] = 0.666f;
         }
-        // else if(data[i] > 400){
-        //     float white = (data[i]-400) / 100.0;
+        else if(data[i] > 400){
+            float white = (data[i]-400) / 400.0;
         // else if(data[i] > 1200){
         //     float white = (data[i]-1200) / 500.0;
-        else if(data[i] > 900){
-            float white = (data[i]-900) / 300.0;
+        // else if(data[i] > 900){
+        //     float white = (data[i]-900) / 300.0;
             if(white > 1.0f) white = 1.0f;
             (*colors)[i*3+0] = white;
-            (*colors)[i*3+1] = 0.6f + 0.4f*white;
+            (*colors)[i*3+1] = 0.3f + 0.7f*white;
             (*colors)[i*3+2] = white;
         }
+        else if(data[i] > 100){
+            float dark = (data[i]-100) / 300.0;
+            if(dark > 1.0f) dark = 1.0f;
+            (*colors)[i*3+0] = 0.0f;
+            (*colors)[i*3+1] = 0.5f - 0.2f*dark;
+            (*colors)[i*3+2] = 0.0f;
+        }
         else{
-            float orange = (200-data[i]) / 200.0;
+            float orange = (100-data[i]) / 100.0;
             if(orange < 0.0f) orange = 0.0f;
-            (*colors)[i*3+0] = orange;
-            (*colors)[i*3+1] = 0.6f;
+            (*colors)[i*3+0] = orange * .85;
+            (*colors)[i*3+1] = 0.5f;
             (*colors)[i*3+2] = 0.0;
         }
     }

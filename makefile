@@ -1,6 +1,7 @@
 # Linux (default)
 EXE = world
-LDFLAGS = -lGL -lGLU -lglut
+CFLAGS = -std=gnu99
+LDFLAGS = -lGL -lGLU -lglut -lm
 
 # Windows (cygwin)
 ifeq "$(OS)" "Windows_NT"
