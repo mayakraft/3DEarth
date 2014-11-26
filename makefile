@@ -1,6 +1,7 @@
 # Linux (default)
 EXE = world
-LDFLAGS = -lGL -lGLU -lglut
+CFLAGS = -std=gnu99
+LDFLAGS = -lGL -lGLU -lglut -lm
 
 # Windows (cygwin)
 ifeq "$(OS)" "Windows_NT"
@@ -9,9 +10,9 @@ ifeq "$(OS)" "Windows_NT"
 endif
 
 # OS X
-# ifeq ($(OSTYPE), "darwin"*)
+ifeq ($(OSTYPE), "darwin"*)
 	LDFLAGS = -framework Carbon -framework OpenGL -framework GLUT
-# endif
+endif
 
 $(EXE) : world.c
 	gcc -o $@ $< $(CFLAGS) $(LDFLAGS)

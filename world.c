@@ -17,20 +17,20 @@ static uint32_t *_indices;
 static float *_colors;
 static unsigned int _numPoints;
 static unsigned int _numIndices;
-static int height = 30;
-static int width = 50;
+static int height = 300;
+static int width = 500;
 static float *political;
 
 void init(){
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glShadeModel(GL_FLAT);
-	char directory[] = "/Users/Robby/Code/DEM/w100n90/";
+	char directory[] = "/home/robby/Code/DEM/w100n90/";
     char filename[] = "W100N90";
 
 
-    char d2[] = "/Users/Robby/Code/3DEarth/";
-    char f2[] = "oregon.data";
-    loadData(d2, f2, &political);
+    // char d2[] = "/home/robby/Code/DEM/w100n90";
+    // char f2[] = "oregon.data";
+    // loadData(d2, f2, &political);
 
 
     // elevationPointCloud(directory, filename, 41.3110871, -72.8074902, width, height, &_points, &_colors, &_numPoints);
@@ -39,15 +39,12 @@ void init(){
     // elevationPointCloud(directory, filename, 44.0, -120.5, width, height, &_points, &_colors, &_numPoints);
 	// elevationTriangles(directory, filename, 44.0, -120.5, width, height, &_points, &_indices, &_colors, &_numPoints, &_numIndices);
 
-	// for(int i = 0; i < _numIndices/3; i++){
-	// 	printf("v %.2f %.2f %.2f\n", _points[_indices[i*3+0]], _points[_indices[i*3+1]], _points[_indices[i*3+2]] );
+	// for(int i = 0; i < _numPoints; i++){
+	// 	printf("v %.2f %.2f %.2f\n", _points[i*3+0], _points[i*3+1], _points[i*3+2] );
 	// }
-	for(int i = 0; i < _numPoints; i++){
-		printf("v %.2f %.2f %.2f\n", _points[i*3+0], _points[i*3+1], _points[i*3+2] );
-	}
-	for(int i = 0; i < _numIndices/3; i++){
-		printf("f %d %d %d\n", _indices[i*3+0] + 1, _indices[i*3+1] + 1, _indices[i*3+2] + 1);
-	}
+	// for(int i = 0; i < _numIndices/3; i++){
+	// 	printf("f %d %d %d\n", _indices[i*3+0] + 1, _indices[i*3+1] + 1, _indices[i*3+2] + 1);
+	// }
 }
 
 void display(){
@@ -60,7 +57,7 @@ void display(){
 	// glPopMatrix();
 	
 	glPushMatrix();
-		glTranslatef(0, 0, -5);
+		glTranslatef(0, 0, -50);
 		glScalef(.1, .1, -.1);
 		// glRotatef(180, -1, 0, 0);  // ORTHO 1
 		glRotatef(120+cos(spin*.0015)*30, -1, 0, 0);  // PERSPECTIVE 1
@@ -140,6 +137,7 @@ int main(int argc, char **argv){
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 	glutMouseFunc(mouse);
+	glutPostRedisplay();
 	glutMainLoop();
 	return 0;
 }
