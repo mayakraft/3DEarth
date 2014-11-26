@@ -17,15 +17,15 @@ static uint32_t *_indices;
 static float *_colors;
 static unsigned int _numPoints;
 static unsigned int _numIndices;
-static int height = 30;
-static int width = 50;
+static int height = 180;
+static int width = 260;
 static float *political;
 
 void init(){
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glShadeModel(GL_FLAT);
-	char directory[] = "/Users/Robby/Code/DEM/w100n90/";
-    char filename[] = "W100N90";
+	char directory[] = "/Users/Robby/Code/DEM/w140n40/";
+    char filename[] = "W140N40";
 
 
     char d2[] = "/Users/Robby/Code/3DEarth/";
@@ -34,7 +34,8 @@ void init(){
 
 
     // elevationPointCloud(directory, filename, 41.3110871, -72.8074902, width, height, &_points, &_colors, &_numPoints);
-	elevationTriangles(directory, filename, 41.3110871, -72.8074902, width, height, &_points, &_indices, &_colors, &_numPoints, &_numIndices);
+	// elevationTriangles(directory, filename, 41.3110871, -72.8074902, width, height, &_points, &_indices, &_colors, &_numPoints, &_numIndices);
+	elevationTriangles(directory, filename, 37.7953325,-122.1066646, width, height, &_points, &_indices, &_colors, &_numPoints, &_numIndices);
 
     // elevationPointCloud(directory, filename, 44.0, -120.5, width, height, &_points, &_colors, &_numPoints);
 	// elevationTriangles(directory, filename, 44.0, -120.5, width, height, &_points, &_indices, &_colors, &_numPoints, &_numIndices);
@@ -60,7 +61,7 @@ void display(){
 	// glPopMatrix();
 	
 	glPushMatrix();
-		glTranslatef(0, 0, -5);
+		glTranslatef(0, 0, -30);
 		glScalef(.1, .1, -.1);
 		// glRotatef(180, -1, 0, 0);  // ORTHO 1
 		glRotatef(120+cos(spin*.0015)*30, -1, 0, 0);  // PERSPECTIVE 1

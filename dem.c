@@ -334,17 +334,19 @@ void elevationTriangles(char *directory, char *filename, float latitude, float l
             (*colors)[i*3+1] = 0.0f;
             (*colors)[i*3+2] = 1.0f;
         }
-        else if(data[i] > 400){
-            float white = (data[i]-400) / 100.0;
+        // else if(data[i] > 400){
+        //     float white = (data[i]-400) / 100.0;
         // else if(data[i] > 1200){
         //     float white = (data[i]-1200) / 500.0;
+        else if(data[i] > 900){
+            float white = (data[i]-900) / 300.0;
             if(white > 1.0f) white = 1.0f;
             (*colors)[i*3+0] = white;
             (*colors)[i*3+1] = 0.6f + 0.4f*white;
             (*colors)[i*3+2] = white;
         }
         else{
-            float orange = (500-data[i]) / 500.0;
+            float orange = (200-data[i]) / 200.0;
             if(orange < 0.0f) orange = 0.0f;
             (*colors)[i*3+0] = orange;
             (*colors)[i*3+1] = 0.6f;
