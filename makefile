@@ -9,10 +9,14 @@ ifeq "$(OS)" "Windows_NT"
 	LDFLAGS = -lopengl32 -lglu32 -lglut32
 endif
 
-# OS X
-# ifeq ($(OSTYPE), "darwin"*)
-	LDFLAGS = -framework Carbon -framework OpenGL -framework GLUT
-# endif
+# OS X, OSTYPE not being declared
+ifndef OSTYPE
+  OSTYPE = $(shell uname -s|awk '{print tolower($$0)}')
+  #export OSTYPE
+endif
+ifeq ($(OSTYPE),darwin)
+	LDFLAGS = -framework Carbon -framework OpenGL -framework GLUT  -Wno-deprecated
+endif
 
 $(EXE) : world.c
 	gcc -o $@ $< $(CFLAGS) $(LDFLAGS)
