@@ -31,7 +31,7 @@ static unsigned int UP_PRESSED = 0;
 static unsigned int DOWN_PRESSED = 0;
 static unsigned int RIGHT_PRESSED = 0;
 static unsigned int LEFT_PRESSED = 0;
-static float mouseRotationX = 0.0f;
+static float mouseRotationX = 180.0f;
 static float mouseRotationY = 0.0f;
 static float startRotationX = 0.0f;
 static float startRotationY = 0.0f;
@@ -99,7 +99,7 @@ void display(){
 		glPushMatrix();
 
 		glRotatef(-90, 1, 0, 0);
-		glTranslatef(0,0,-100);
+		glTranslatef(0,0,-30);
 
 		// glRotatef(180, -1, 0, 0);  // ORTHO 1
 		// glRotatef(120+cos(spin*.0015)*30, -1, 0, 0);  // PERSPECTIVE 1
@@ -143,22 +143,42 @@ void spinDisplay(void){
 }
 
 void update(){
-	if(UP_PRESSED) xPos += STEP;
-	if(DOWN_PRESSED) xPos -= STEP;
-	if(RIGHT_PRESSED) yPos += STEP;
-	if(LEFT_PRESSED) yPos -= STEP;
-	glutPostRedisplay();
-}
+	// if(UP_PRESSED) xPos += STEP;
+	// if(DOWN_PRESSED) xPos -= STEP;
+	// if(RIGHT_PRESSED) yPos += STEP;
+	// if(LEFT_PRESSED) yPos -= STEP;
+    static const float M_PI_HALF = 1.5708f;
 
-void reshape(int w, int h){
-	float a = (float)width/height;
-	glViewport(0,0,(GLsizei) w, (GLsizei) h);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	// glOrtho(-40.0, 40.0, -40/a, 40/a, -100.0, 100.0);
-	glFrustum (-1.0, 1.0, -1.0, 1.0, 1.5, 2000.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+    float lookAzimuth = 0;
+    float mouseAzimuth = mouseRotationX/180.*3.14159f-M_PI_HALF;
+    
+    lookAzimuth += mouseAzimuth;
+    
+    if(UP_PRESSED){
+        float x =  sinf(lookAzimuth);
+        float y =  cosf(lookAzimuth);
+        xPos += x;
+        yPos += y;
+    }
+    if(DOWN_PRESSED){
+        float x = sinf(lookAzimuth);
+        float y =  cosf(lookAzimuth);
+        xPos -= x;
+        yPos -= y;
+    }
+    if(LEFT_PRESSED){
+        float x =  sinf(lookAzimuth+M_PI_HALF);
+        float y =  cosf(lookAzimuth+M_PI_HALF);
+        xPos -= x;
+        yPos -= y;
+    }
+    if(RIGHT_PRESSED){
+        float x =  sinf(lookAzimuth+M_PI_HALF);
+        float y = cosf(lookAzimuth+M_PI_HALF);
+        xPos += x;
+        yPos += y;
+    }
+	glutPostRedisplay();
 }
 
 void mouse(int button, int state, int x, int y){
@@ -220,15 +240,14 @@ void keyboard(unsigned char key, int x, int y){
 		case GLUT_KEY_LEFT:
 			LEFT_PRESSED = 1;
 			break;
-		case 't':
-			break;
+		// case 't':
+		// 	break;
 	}
 	if(UP_PRESSED || DOWN_PRESSED || RIGHT_PRESSED || LEFT_PRESSED)
 		glutIdleFunc(update);
 }
 
 void keyboardUp(unsigned char key,int x,int y){
-	printf("%d\n",key);
 	switch (key){
 		case 27:             // ESCAPE key
 			exit (0);
@@ -249,16 +268,25 @@ void keyboardUp(unsigned char key,int x,int y){
 		case GLUT_KEY_LEFT:
 			LEFT_PRESSED = 0;
 			break;
-		case 't':
-			break;
+		// case 't':
+		// 	break;
 	}
 	if(!(UP_PRESSED || DOWN_PRESSED || RIGHT_PRESSED || LEFT_PRESSED))
 		glutIdleFunc(NULL);
 }
 
+void reshape(int w, int h){
+	float a = (float)width/height;
+	glViewport(0,0,(GLsizei) w, (GLsizei) h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	// glOrtho(-40.0, 40.0, -40/a, 40/a, -100.0, 100.0);
+	glFrustum (-1.0, 1.0, -1.0/a, 1.0/a, 1.5, 2000.0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
 
 int main(int argc, char **argv){
-	printf("WE ON!\n");
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowPosition(10,10);
