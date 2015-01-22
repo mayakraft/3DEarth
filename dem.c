@@ -1,10 +1,10 @@
+// GTOPO30 elevation data .DEM file processing and OpenGL mesh building
+// https://lta.cr.usgs.gov/GTOPO30
 //
-//  dem.c
-//  Created by Robby on 5/10/14.
+// Created by Robby Kraft on 5/10/14.
 //
 
 #include <stdio.h>
-#include "dem.h"
 
 struct demMeta {
     unsigned int nrows;
@@ -15,52 +15,15 @@ struct demMeta {
     double ydim;
 };
 
-// DEM standard for all plates except Antartica
-//#define NROWS 6000
-//#define NCOLS 4800
-//#define XDIM 0.00833333333333
-//#define YDIM 0.00833333333333
+#include "dem.h"
 
-// typedef struct demMeta demMeta;
-
-float** loadData(char *directory, char *filename, float **data){
-
-    (*data) = (float*)malloc(sizeof(float)*129 * 2);
-
-    char path[128];  // oh shit you have a directory path larger than 128 chars? i have failed you..
-    path[0] = '\0';
-    printf("%s\n",path);
-    strcat(path, directory);
-    printf("%s\n",path);
-    strcat(path, filename);
-    printf("%s\n",path);
-    FILE *file = fopen(path, "r");
-    if(file == NULL){
-        printf("\nEXCEPTION: FILE (%s) DOESN'T EXIST\n",path);
-        return NULL;
-    }
-    float f1, f2;
-    int i = 0;
-    int cmp;
-    printf("\nLoading %s\n(%s)\n╔════════════════════════════════\n", filename, directory);
-    do {
-        cmp = fscanf(file,"%f %f", &f1, &f2);
-        printf("║ %f, %f\n", f1, f2);
-        //44.0, -120.5
-        (*data)[i*2+0] = (f1 + 120.5) * 120;
-        (*data)[i*2+1] = -(f2 - 44.0) * 120;
-        i++;
-    } while (cmp > 0);
-    printf("╚════════════════════════════════\n");
-    fclose(file);
-    return data;
-}
+#include <string.h>
 
 struct demMeta loadHeader(char *directory, char *filename){
-// expecting .HDR file standard (accompanies .DEM files)
+// looks for .HDR file (packaged with .DEM files from USGS)
     struct demMeta meta;
     
-    char path[128];  // oh shit you have a directory path larger than 128 chars? i have failed you..
+    char path[128];  // you have a directory path larger than 128 chars? must increase this number
     path[0] = '\0';
     printf("%s\n",path);
     strcat(path, directory);
@@ -103,43 +66,34 @@ struct demMeta loadHeader(char *directory, char *filename){
     return meta;
 }
 
-unsigned long getByteOffset(float latitude, float longitude, struct demMeta meta){
-    
-    float plateWidth = meta.xdim * meta.ncols;  // in degrees, Longitude
-    float plateHeight = meta.ydim * meta.nrows; // in degrees, Latitude
-    
-    if(longitude < meta.ulxmap || longitude > meta.ulxmap+plateWidth || latitude > meta.ulymap || latitude < meta.ulymap-plateHeight){
-        printf("\nEXCEPTION: lat long exceeds plate boundary\n");
-        return NULL;
-    }
-    double xOffset = (longitude-meta.ulxmap)/plateWidth;  // 0.0 - 1.0
-    double yOffset = (meta.ulymap-latitude)/plateHeight;  // 0.0 - 1.0
-    
-    unsigned int byteX = xOffset*meta.ncols;
-    unsigned int byteY = yOffset*meta.nrows;
-    
-    return (byteX + byteY*meta.ncols) * 2;  // * 2, each index is 2 bytes wide
-}
 
-void convertLatLonToXY(struct demMeta meta, float latitude, float longitude, unsigned int *x, unsigned int *y){
+void getByteColumnRowFromGeoLocation(struct demMeta meta, float latitude, float longitude, unsigned int *col, unsigned int *row){
     
     double plateWidth = meta.xdim * meta.ncols;  // in degrees, Longitude
     double plateHeight = meta.ydim * meta.nrows; // in degrees, Latitude
     
     if(longitude < meta.ulxmap || longitude > meta.ulxmap+plateWidth || latitude > meta.ulymap || latitude < meta.ulymap-plateHeight){
         printf("\nEXCEPTION: lat long exceeds plate boundary\n");
+        *col = -1;
+        *row = -1;
         return;
     }
     double xOffset = (longitude-meta.ulxmap)/plateWidth;  // 0.0 - 1.0
     double yOffset = (meta.ulymap-latitude)/plateHeight;  // 0.0 - 1.0
     
-    *x = xOffset*meta.ncols;
-    *y = yOffset*meta.nrows;
+    *col = xOffset*meta.ncols;
+    *row = yOffset*meta.nrows;
 }
 
-// returns a cropped rectangle from a raw DEM file
-// includes edge overflow protection
-// rect defined by (x,y):top left corner and width, height
+
+unsigned long getByteOffsetFromGeoLocation(struct demMeta meta, float latitude, float longitude){
+    unsigned int byteX, byteY;
+    getByteColumnRowFromGeoLocation(meta, latitude, longitude, &byteX, &byteY);
+    if(byteX == -1) return -1;
+    return (byteX + byteY*meta.ncols) * 2;  // * 2, each index is 2 bytes wide
+}
+
+
 int16_t* cropDEMWithMeta(char *directory, char *filename, struct demMeta meta, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
     
     char path[128];  // oh shit you have a directory path larger than 128 chars? i have failed you..
@@ -179,10 +133,13 @@ int16_t* cropDEMWithMeta(char *directory, char *filename, struct demMeta meta, u
     fclose(file);
     return crop;
 }
+
+
 int16_t* cropDEM(char *directory, char *filename, unsigned int x, unsigned int y, unsigned int width, unsigned int height){
     struct demMeta meta = loadHeader(directory, filename);
     return cropDEMWithMeta(directory, filename, meta, x, y, width, height);
 }
+
 
 void checkBoundaries(struct demMeta meta, unsigned int *x, unsigned int *y, unsigned int *width, unsigned int *height){
     //if rectangle overflows past boundary, will move the rectangle and maintain width and height if possible
@@ -211,7 +168,7 @@ void checkBoundaries(struct demMeta meta, unsigned int *x, unsigned int *y, unsi
     }
 }
 
-//X:longitude Y:latitude Z:elevation
+
 void elevationPointCloud(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float **points, float **colors, unsigned int *numPoints){
     if(!width || !height)
         return;
@@ -221,7 +178,7 @@ void elevationPointCloud(char *directory, char *filename, float latitude, float 
     
     // convert lat/lon into column/row for plate
     unsigned int row, column;
-    convertLatLonToXY(meta, latitude, longitude, &column, &row);
+    getByteColumnRowFromGeoLocation(meta, latitude, longitude, &column, &row);
     
     // shift center point to top left, and check boundaries
     column -= width*.5;
@@ -284,7 +241,7 @@ void elevationPointCloud(char *directory, char *filename, float latitude, float 
     *numPoints = height * width;
 }
 
-//X:longitude Y:latitude Z:elevation
+
 void elevationTriangles(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float **points, uint32_t **indices, float **colors, unsigned int *numPoints, unsigned int *numIndices){
     if(!width || !height)
         return;
@@ -294,7 +251,7 @@ void elevationTriangles(char *directory, char *filename, float latitude, float l
     
     // convert lat/lon into column/row for plate
     unsigned int row, column;
-    convertLatLonToXY(meta, latitude, longitude, &column, &row);
+    getByteColumnRowFromGeoLocation(meta, latitude, longitude, &column, &row);
     
     // shift center point to top left, and check boundaries
     column -= width*.5;
@@ -375,8 +332,6 @@ void elevationTriangles(char *directory, char *filename, float latitude, float l
 }
 
 
-//X:longitude Y:latitude Z:elevation
-// IN PROGRESS
 void elevationTriangleStrip(char *directory, char *filename, float latitude, float longitude, unsigned int width, unsigned int height, float *points, float *colors){
     if(!width || !height)
         return;
@@ -386,7 +341,7 @@ void elevationTriangleStrip(char *directory, char *filename, float latitude, flo
     
     // convert lat/lon into column/row for plate
     unsigned int row, column;
-    convertLatLonToXY(meta, latitude, longitude, &column, &row);
+    getByteColumnRowFromGeoLocation(meta, latitude, longitude, &column, &row);
     
     // shift center point to top left, and check boundaries
     column -= width*.5;
@@ -448,3 +403,38 @@ void elevationTriangleStrip(char *directory, char *filename, float latitude, flo
 
 }
 
+
+// IN PROGRESS
+//   load political boundary line data
+float** loadData(char *directory, char *filename, float **data){
+
+    (*data) = (float*)malloc(sizeof(float)*129 * 2);
+
+    char path[128];  // you have a directory path larger than 128 chars? must increase this number
+    path[0] = '\0';
+    printf("%s\n",path);
+    strcat(path, directory);
+    printf("%s\n",path);
+    strcat(path, filename);
+    printf("%s\n",path);
+    FILE *file = fopen(path, "r");
+    if(file == NULL){
+        printf("\nEXCEPTION: FILE (%s) DOESN'T EXIST\n",path);
+        return NULL;
+    }
+    float f1, f2;
+    int i = 0;
+    int cmp;
+    printf("\nLoading %s\n(%s)\n╔════════════════════════════════\n", filename, directory);
+    do {
+        cmp = fscanf(file,"%f %f", &f1, &f2);
+        printf("║ %f, %f\n", f1, f2);
+        //44.0, -120.5
+        (*data)[i*2+0] = (f1 + 120.5) * 120;
+        (*data)[i*2+1] = -(f2 - 44.0) * 120;
+        i++;
+    } while (cmp > 0);
+    printf("╚════════════════════════════════\n");
+    fclose(file);
+    return data;
+}

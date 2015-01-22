@@ -1,8 +1,16 @@
 #elevation maps
 
-OpenGL mesh rectangles of Earth surface from anywhere in the world using the USGS Global 30 Arc-Second Elevation (GTOPO30) data
+.DEM: (GTOPO30) USGS Worldwide 30 Arc-Second Elevation Data (more info: [https://lta.cr.usgs.gov/GTOPO30](https://lta.cr.usgs.gov/GTOPO30))
 
-download tiles for offline use: [ftp://edcftp.cr.usgs.gov/data/gtopo30]
+### .DEM processing tool
+* crop tiles
+* convert between latitude/longitude and byte offset
+
+### OpenGL mesh builder
+* point cloud mesh, triangle mesh
+* elevation-based color array
+
+download tiles: [ftp://edcftp.cr.usgs.gov/data/gtopo30](ftp://edcftp.cr.usgs.gov/data/gtopo30)
 
 ![tiles image](https://lta.cr.usgs.gov/sites/default/files/tiles.gif)
 
